@@ -33,6 +33,7 @@
       <?php endforeach; ?>
     </tr>
   </thead>
+  <?php if (!$summary_only): ?>
   <tbody>
     <?php foreach ($rows as $count => $row): ?>
       <tr class="<?php print implode(' ', $row_classes[$count]); ?>">
@@ -44,6 +45,7 @@
       </tr>
     <?php endforeach; ?>
   </tbody>
+  <?php endif; ?>
   <tfoot>
     <tr class="summary">
       <?php foreach ($header as $field => $label): ?>

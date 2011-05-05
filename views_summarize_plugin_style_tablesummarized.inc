@@ -21,5 +21,11 @@ class views_summarize_plugin_style_tablesummarized extends views_plugin_style_ta
         '#dependency' => array($id => array($field)),
       );
     }
+    $form['summary_only'] = array(
+      '#title' => t('Display the summary row only'),
+      '#description' => t('If checked only the summary row will be displayed,'),
+      '#type' => 'checkbox',
+      '#default_value' => !empty($this->options['summary_only']),
+    );
   }
 }
