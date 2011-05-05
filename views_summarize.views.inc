@@ -10,7 +10,7 @@ function views_summarize_views_plugins() {
         'title' => t('Summarized Table'),
         'help' => t('Displays rows in a table with a summary row for any column.'),
         'handler' => 'views_summarize_plugin_style_tablesummarized',
-        'parent' => 'views_plugin_style_table',
+        'parent' => 'table',
         'theme' => 'views_summarize_views_tablesummarized',
         'theme path' => drupal_get_path('module', 'views_summarize') . '/theme',
         'uses row plugin' => FALSE,

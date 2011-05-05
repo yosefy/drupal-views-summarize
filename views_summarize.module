@@ -84,6 +84,8 @@ function template_preprocess_views_summarize_views_tablesummarized(&$vars) {
 
 /**
  * Theme the form for the table style plugin
+ *
+ * This is almost the same as theme_views_summarize_plugin_style_table().
  */
 function theme_views_summarize_plugin_style_tablesummarized($form) {
   $output = drupal_render($form['description_markup']);

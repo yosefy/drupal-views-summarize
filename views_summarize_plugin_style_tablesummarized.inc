@@ -1,15 +1,4 @@
 <?php
-/**
- * @file
- * Contains the table style plugin.
- */
-
-/**
- * TODO Avoid manually including these files, they should be loaded
- * by the plugin handler.
- */
-require_once drupal_get_path('module', 'views') . '/plugins/views_plugin_style.inc';
-require_once drupal_get_path('module', 'views') . '/plugins/views_plugin_style_table.inc';
 
 /**
  * Style plugin to render each item as a row in a table.
