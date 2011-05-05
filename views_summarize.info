@@ -1,0 +1,6 @@
+name = Views summarize
+description = Provides a style plugin for Views allowing tables to summarized.
+core = 6.x
+package = Views
+php = 5.1
+dependencies[] = views
