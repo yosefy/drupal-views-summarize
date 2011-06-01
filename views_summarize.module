@@ -59,7 +59,7 @@ function views_summarize_get_handlers() {
  * Display a view as a table summary.
  */
 function template_preprocess_views_summarize_views_tablesummarized(&$vars) {
-  template_preprocess_views_view_table(&$vars);
+  template_preprocess_views_view_table($vars);
 
   if (!count($vars['rows'])) {
     return;
