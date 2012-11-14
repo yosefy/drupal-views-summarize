@@ -72,7 +72,9 @@ function template_preprocess_views_summarize_views_tablesummarized(&$vars) {
 
   $opts =& $vars['view']->style_plugin->options['info'];
 
-  $vars['summary_only'] = $vars['view']->style_plugin->options['summary_only'];
+  if (isset($vars['view']->style_plugin->options['summary_only'])) {
+    $vars['summary_only'] = $vars['view']->style_plugin->options['summary_only'];
+  }
 
   $data = array();
   foreach ($vars['rows'] as $row) {

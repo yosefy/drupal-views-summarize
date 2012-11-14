@@ -30,7 +30,7 @@
       <?php endforeach; ?>
     </tr>
   </thead>
-  <?php if (!$summary_only): ?>
+  <?php if (empty($summary_only)): ?>
   <tbody>
     <?php foreach ($rows as $count => $row): ?>
       <tr class="<?php print implode(' ', $row_classes[$count]); ?>">
