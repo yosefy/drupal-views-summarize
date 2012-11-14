@@ -46,7 +46,7 @@
   <tfoot>
     <tr class="summary">
       <?php foreach ($header as $field => $label): ?>
-        <td><?php echo $summarized[$field]; ?></td>
+        <td><?php if (!empty($summarized[$field])) { echo $summarized[$field]; } ?></td>
       <?php endforeach; ?>
     </tr>
   </tfoot>
