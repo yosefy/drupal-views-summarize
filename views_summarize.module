@@ -205,6 +205,8 @@ function theme_views_summarize_type_currency($variables) {
   $data = $variables['data'];
   $total = 0;
   foreach ($data as $val) {
+    // This allows for negative values and values w/commas to be added
+    // correctly.
     $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
   }
   return '<div class="label">' . t('Total:') . '</div>' .
@@ -219,8 +221,9 @@ function theme_views_summarize_type_total($variables) {
   $data = $variables['data'];
   $total = 0;
   foreach ($data as $val) {
-    if (!is_numeric($val)) { continue; }
-    $total += $val;
+    // This allows for negative values and values w/commas to be added
+    // correctly.
+    $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
   }
   return '<div class="label">' . t('Total:') . '</div>' .
     $total;
