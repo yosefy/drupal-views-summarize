@@ -39,6 +39,9 @@ function views_summarize_theme() {
     'views_summarize_type_average' => array(
       'variables' => array('data' => array()),
     ),
+    'views_summarize_type_average_no_empties' => array(
+      'variables' => array('data' => array()),
+    ),
   );
 }
 
@@ -53,7 +56,8 @@ function views_summarize_get_handlers() {
     'range'    => t('Range'),
     'total'    => t('Total'),
     'currency' => t('Total (Currency)'),
-    'average'  => t('Average'),
+    'average'  => t('Average (include empty values)'),
+    'average_no_empties' => t('Average (exclude empty values)'),
     'spread'   => t('Spread'),
   );
 }
@@ -233,16 +237,40 @@ function theme_views_summarize_type_total($variables) {
 
 
 /**
- * Theme: Total value for an average column
+ * Theme: Total value for an average column w/empty data values included.
  */
 function theme_views_summarize_type_average($variables) {
   $data = $variables['data'];
   $total = 0;
   foreach ($data as $val) {
-    $total += $val;
+    $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
   }
-  return '<div class="label">' . t('Average:') . '</div>' .
+  return '<div class="label">' . t('Average (including empty values):') . '</div>' .
     sprintf("%.2f", $total / count($data));
+}
+
+
+/**
+ * Theme: Total value for an average column w/empty data values excluded.
+ */
+function theme_views_summarize_type_average_no_empties($variables) {
+  $data = $variables['data'];
+  $total = 0;
+  $count = 0;
+  foreach ($data as $val) {
+    if (isset($val) && $val != '') {
+      $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
+      $count++;
+    }
+  }
+  if ($total != 0 && $count != 0) {
+    return '<div class="label">' . t('Average (excluding empty values):') . '</div>' .
+      sprintf("%.2f", $total / $count);
+  }
+  else {
+    return '<div class="label">' . t('Average (excluding empty values):') . '</div>' .
+      sprintf("%.2f", '0');
+  }
 }
 
 
