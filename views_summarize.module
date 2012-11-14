@@ -258,6 +258,6 @@ function theme_views_summarize_type_spread($variables) {
     $rows[] = array($value, $count);
   }
 
-  return '<div class="label">' . t('Spread:') . '</div>' .
-    theme('table', array(), $rows);
+  $header = array(array('data' => t('Spread'), 'colspan' => 2));
+  return  theme('table', array('header' => $header, 'rows' => $rows));
 }
