@@ -205,7 +205,7 @@ function theme_views_summarize_type_currency($variables) {
   $data = $variables['data'];
   $total = 0;
   foreach ($data as $val) {
-    $total += (float) preg_replace('/[^0-9\.]/', '', $val);
+    $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
   }
   return '<div class="label">' . t('Total:') . '</div>' .
     sprintf('$%.02f', $total);
