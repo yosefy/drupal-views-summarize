@@ -260,7 +260,13 @@ function theme_views_summarize_type_spread($variables) {
   }
   $rows = array();
   foreach ($hist as $value => $count) {
-    $rows[$value] = array($value, $count);
+    if (empty($value)) {
+      $empty_string = t('(empty)');
+      $rows[$empty_string] = array($empty_string, $count);
+    }
+    else {
+      $rows[$value] = array($value, $count);
+    }
   }
   if (version_compare(phpversion(), '5.4.0', '>=')) {
     ksort($rows, SORT_NATURAL);
