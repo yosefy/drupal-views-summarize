@@ -211,8 +211,8 @@ function theme_views_summarize_type_currency($variables) {
     // correctly.
     $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
   }
-  return '<div class="label">' . t('Total:') . '</div>' .
-    sprintf('$%.02f', $total);
+  return '<div class="label">' . t('Total:') . '</div>$' .
+    number_format($total, 2);
 }
 
 
