@@ -191,7 +191,7 @@ function theme_views_summarize_type_count($variables) {
 
 
 /**
- * Theme: Max and minimum value in this column
+ * Theme: Maximum and minimum values in this column
  */
 function theme_views_summarize_type_range($variables) {
   $data = $variables['data'];
@@ -199,8 +199,8 @@ function theme_views_summarize_type_range($variables) {
     array(t('Min'), min($data)),
     array(t('Max'), max($data)),
   );
-  return '<div class="label">' . t('Range:') . '</div>' .
-    theme('table', array(), $rows);
+  $header = array(array('data' => t('Range'), 'colspan' => 2));
+  return theme('table', array('header' => $header, 'rows' => $rows));
 }
 
 
@@ -304,5 +304,5 @@ function theme_views_summarize_type_spread($variables) {
   }
 
   $header = array(array('data' => t('Spread'), 'colspan' => 2));
-  return  theme('table', array('header' => $header, 'rows' => $rows));
+  return theme('table', array('header' => $header, 'rows' => $rows));
 }
