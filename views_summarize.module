@@ -213,7 +213,7 @@ function theme_views_summarize_type_currency($variables) {
   foreach ($data as $val) {
     // This allows for negative values and values w/commas to be added
     // correctly.
-    $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
+    $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
   }
   return '<div class="label">' . t('Total:') . '</div>$' .
     number_format($total, 2);
@@ -229,7 +229,7 @@ function theme_views_summarize_type_total($variables) {
   foreach ($data as $val) {
     // This allows for negative values and values w/commas to be added
     // correctly.
-    $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
+    $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
   }
   return '<div class="label">' . t('Total:') . '</div>' .
     $total;
@@ -243,7 +243,7 @@ function theme_views_summarize_type_average($variables) {
   $data = $variables['data'];
   $total = 0;
   foreach ($data as $val) {
-    $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
+    $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
   }
   return '<div class="label">' . t('Average (including empty values):') . '</div>' .
     sprintf("%.2f", $total / count($data));
@@ -259,7 +259,7 @@ function theme_views_summarize_type_average_no_empties($variables) {
   $count = 0;
   foreach ($data as $val) {
     if (isset($val) && $val != '') {
-      $total += (float) preg_replace('/[^0-9\.\-]/', '', $val);
+      $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
       $count++;
     }
   }
