@@ -10,13 +10,14 @@ use Drupal\views\Plugin\views\style\Table;
  *
  * @ingroup views_style_plugins
  *
- * "theme" is the name of the theme hook to use to render the element.
+ * "theme" is the name of the template preprocess function and the Twig template
+ * file (with hyphens replacing the underscores) used to render the table.
  *
  * @ViewsStyle(
  *   id = "tablesummarized",
  *   title = @Translation("Summarized table"),
  *   help = @Translation("Displays rows in a table with a summary row for any column."),
- *   theme = "views_view_summarized_table",
+ *   theme = "views_summarize_view_summarized_table",
  *   display_types = {"normal"}
  * )
  */
@@ -29,7 +30,7 @@ class TableSummarized extends Table {
     parent::buildOptionsForm($form, $form_state);
 
     // This is for themeing the form for the Views Summarized table Settings.
-    $form['#theme'] = 'views_summarize_plugin_style_tablesummarized';
+    $form['#theme'] = 'views_summarize_style_plugin_summarized_table';
 
     $options = $this->getHandlers();
     $columns = $this->sanitizeColumns($this->options['columns']);

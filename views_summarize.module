@@ -1,7 +1,344 @@
-name: Views summarize
-type: module
-description: Provides a style plugin for Views, allowing table data to be summarized.
-core: 8.x
-package: Views
-dependencies:
-  - drupal:views
+<?php
+
+/**
+ * @file
+ * Defines the functionality and Dupal hooks for this module.
+ */
+
+use Drupal\Core\Render\Element;
+
+/**
+ * Implements hook_theme().
+ */
+function views_summarize_theme() {
+  return [
+    // This is for themeing the form for the Views Summarized table Settings.
+    'views_summarize_style_plugin_summarized_table' => [
+      'render element' => 'form',
+    ],
+  ];
+}
+
+/**
+ * Display a view as a table summary.
+ */
+function template_preprocess_views_summarize_view_summarized_table(&$variables) {
+  template_preprocess_views_view_table($variables);
+
+  if (empty($variables['rows']) || !is_array($variables['rows']) || !count($variables['rows'])) {
+    return;
+  }
+
+  $options = $variables['view']->style_plugin->options;
+
+  if (isset($options['summary_only'])) {
+    $variables['summary_only'] = $options['summary_only'];
+  }
+
+  $data = [];
+  foreach ($variables['rows'] as $row) {
+    foreach ($row['columns'] as $field => $field_definition) {
+      foreach ($field_definition['content'] as $field_output) {
+        if (!empty($field_output['field_output']['#markup'])) {
+          $data[$field][] = $field_output['field_output']['#markup']->__toString();
+        }
+      }
+    }
+  }
+
+  $variables['summarized'] = [];
+  foreach ($options['info'] as $field => $settings) {
+    if (isset($data[$field])) {
+      $theme_function = 'views_summarize_type_' . $settings['summarize'];
+      $variables['summarized'][$field] = $theme_function($data[$field]);
+    }
+  }
+  sleep(1);
+}
+
+/**
+ * Themes the form for the Views Summarized table Settings.
+ *
+ * This is almost the same as template_preprocess_views_ui_style_plugin_table().
+ */
+function template_preprocess_views_summarize_style_plugin_summarized_table(&$variables) {
+  $form = $variables['form'];
+
+  $header = [
+    t('Field'),
+    t('Column'),
+    t('Align'),
+    t('Summarize'),
+    t('Separator'),
+    [
+      'data' => t('Sortable'),
+      'align' => 'center',
+    ],
+    [
+      'data' => t('Default order'),
+      'align' => 'center',
+    ],
+    [
+      'data' => t('Default sort'),
+      'align' => 'center',
+    ],
+    [
+      'data' => t('Hide empty column'),
+      'align' => 'center',
+    ],
+    [
+      'data' => t('Responsive'),
+      'align' => 'center',
+    ],
+  ];
+
+  $rows = [];
+  foreach (Element::children($form['columns']) as $id) {
+    $row = [];
+    $row[]['data'] = $form['info'][$id]['name'];
+    $row[]['data'] = $form['columns'][$id];
+    $row[]['data'] = $form['info'][$id]['align'];
+    $row[]['data'] = $form['info'][$id]['summarize'];
+    $row[]['data'] = $form['info'][$id]['separator'];
+
+    if (!empty($form['info'][$id]['sortable'])) {
+      $row[] = [
+        'data' => $form['info'][$id]['sortable'],
+        'align' => 'center',
+      ];
+      $row[] = [
+        'data' => $form['info'][$id]['default_sort_order'],
+        'align' => 'center',
+      ];
+      $row[] = [
+        'data' => $form['default'][$id],
+        'align' => 'center',
+      ];
+    }
+    else {
+      $row[] = '';
+      $row[] = '';
+      $row[] = '';
+    }
+    $row[] = [
+      'data' => $form['info'][$id]['empty_column'],
+      'align' => 'center',
+    ];
+    $row[] = [
+      'data' => $form['info'][$id]['responsive'],
+      'align' => 'center',
+    ];
+    $rows[] = $row;
+  }
+
+  // Add the special 'None' row.
+  $rows[] = [
+    [
+      'data' => t('None'),
+      'colspan' => 6,
+    ],
+    [
+      'align' => 'center',
+      'data' => $form['default'][-1],
+    ],
+    [
+      'colspan' => 2,
+    ],
+  ];
+
+  // Save the table render array in the $variables variable.
+  $variables['table'] = [
+    '#type' => 'table',
+    '#theme' => 'table__views_summarize_style_plugin_summarized_table',
+    '#header' => $header,
+    '#rows' => $rows,
+  ];
+
+  // Unset elements from the form array that are used to build the table so that
+  // they are not rendered twice.
+  unset($form['default']);
+  unset($form['info']);
+  unset($form['columns']);
+  $variables['form'] = $form;
+}
+
+/**
+ * Creates the mark up for a no summary column.
+ */
+function views_summarize_type_none($data) {
+  return ['#markup' => ''];
+}
+
+/**
+ * Creates the mark up for the total number of non-empty values in this column.
+ */
+function views_summarize_type_count($data) {
+  $count = 0;
+
+  if (!empty($data) && is_array($data)) {
+    $count = count(array_filter($data));
+  }
+
+  $text = t('Count:');
+  return ['#markup' => '<div class="label">' . $text . '</div> ' . $count];
+}
+
+/**
+ * Creates the mark up for the total value for a numeric column.
+ */
+function views_summarize_type_total($data) {
+  $total = 0;
+
+  if (!empty($data) && is_array($data)) {
+    foreach ($data as $val) {
+      // This allows for negative values and values w/commas to be added
+      // correctly.
+      $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
+    }
+  }
+
+  $text = t('Total:');
+  return ['#markup' => '<div class="label">' . $text . '</div> ' . $total];
+}
+
+/**
+ * Creates the mark up for the total value for a currency amount.
+ */
+function views_summarize_type_currency($data) {
+  $total = 0;
+
+  if (!empty($data) && is_array($data)) {
+    foreach ($data as $val) {
+      // This allows for negative values and values w/commas to be added
+      // correctly.
+      $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
+    }
+    $total = number_format($total, 2);
+  }
+
+  $text = t('Total:');
+  return ['#markup' => '<div class="label">' . $text . '</div> $' . $total];
+}
+
+/**
+ * Creates the mark up for the total value for an average column.
+ *
+ * The average calculation includes empty data values.
+ */
+function views_summarize_type_average($data) {
+  $total = 0;
+
+  if (!empty($data) && is_array($data)) {
+    foreach ($data as $val) {
+      $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
+    }
+    $total = sprintf("%.2f", $total / count($data));
+  }
+
+  $text = t('Average (including empty values):');
+  return ['#markup' => '<div class="label">' . $text . '</div> ' . $total];
+}
+
+/**
+ * Creates the mark up for the total value for an average column.
+ *
+ * The average calculation excludes empty data values.
+ */
+function views_summarize_type_average_no_empties($data) {
+  $total = 0;
+  $count = 0;
+
+  if (!empty($data) && is_array($data)) {
+    foreach ($data as $val) {
+      if (isset($val) && $val != '') {
+        $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
+        $count++;
+      }
+    }
+  }
+
+  if ($total != 0 && $count != 0) {
+    $average = sprintf("%.2f", $total / $count);
+  }
+  else {
+    $average = sprintf("%.2f", '0');
+  }
+
+  $text = t('Average (excluding empty values):');
+  return ['#markup' => '<div class="label">' . $text . '</div> ' . $average];
+}
+
+/**
+ * Creates the mark up for the maximum and minimum values in this column.
+ */
+function views_summarize_type_range($data) {
+  $header = [
+    [
+      'data' => t('Range'),
+      'colspan' => 2,
+    ],
+  ];
+
+  $rows = [];
+  if (!empty($data) && is_array($data)) {
+    $rows = [
+      [
+        t('Min'), min($data),
+      ],
+      [
+        t('Max'), max($data),
+      ],
+    ];
+  }
+
+  $table = [
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $rows,
+  ];
+
+  return $table;
+}
+
+/**
+ * Creates the mark up for a spread table in this column.
+ */
+function views_summarize_type_spread($data) {
+  $hist = [];
+  $header = [
+    [
+      'data' => t('Spread'),
+      'colspan' => 2,
+    ],
+  ];
+
+  $rows = [];
+  if (!empty($data) && is_array($data)) {
+    foreach ($data as $val) {
+      if (!isset($hist[$val])) {
+        $hist[$val] = 0;
+      }
+      $hist[$val]++;
+    }
+
+    foreach ($hist as $value => $count) {
+      if (empty($value)) {
+        $empty_string = t('(empty)');
+        $rows[$empty_string] = [$empty_string, $count];
+      }
+      else {
+        $rows[$value] = [$value, $count];
+      }
+    }
+
+    ksort($rows, SORT_NATURAL);
+  }
+
+  $table = [
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $rows,
+  ];
+
+  return $table;
+}
