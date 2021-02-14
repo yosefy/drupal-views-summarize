@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Defines the functionality and Dupal hooks for this module.
+ * Defines the functionality and Drupal hooks for this module.
  */
 
 use Drupal\Core\Render\Element;
@@ -29,7 +29,8 @@ function template_preprocess_views_summarize_view_summarized_table(&$variables) 
     return;
   }
 
-  $options = $variables['view']->style_plugin->options;
+  $view = $variables['view'];
+  $options = $view->style_plugin->options;
 
   if (isset($options['summary_only'])) {
     $variables['summary_only'] = $options['summary_only'];
@@ -38,22 +39,55 @@ function template_preprocess_views_summarize_view_summarized_table(&$variables) 
   $data = [];
   foreach ($variables['rows'] as $row) {
     foreach ($row['columns'] as $field => $field_definition) {
-      foreach ($field_definition['content'] as $field_output) {
-        if (!empty($field_output['field_output']['#markup'])) {
-          $data[$field][] = $field_output['field_output']['#markup']->__toString();
+      if (empty($field_definition['content'])) {
+        $data[$field][] = '';
+      }
+      else {
+        foreach ($field_definition['content'] as $field_output) {
+          if (empty($field_output['field_output']['#markup'])) {
+            $data[$field][] = '';
+          }
+          else {
+            $data[$field][] = $field_output['field_output']['#markup']->__toString();
+          }
         }
       }
     }
   }
 
+  // Use the first entity in the result set to get the entity field definition.
+  // If there are multiple types of entities and/or bundles included in the
+  // field list, this could produce unexpected results.
+  $field_definitions = $view->result[0]->_entity->getFieldDefinitions();
+
   $variables['summarized'] = [];
   foreach ($options['info'] as $field => $settings) {
     if (isset($data[$field])) {
+      // Get the display's field settings.
+      $field_settings = [];
+      if (!empty($view->field[$field]->options['settings'])) {
+        $field_settings = $view->field[$field]->options['settings'];
+      }
+
+      // Get the field instance settings.
+      $field_config_settings = [];
+      if (!empty($field_definitions[$field])) {
+        $field_config_settings = $field_definitions[$field]->getSettings();
+      }
+
       $theme_function = 'views_summarize_type_' . $settings['summarize'];
-      $variables['summarized'][$field] = $theme_function($data[$field]);
+      $options = [
+        'field' => $field,
+        'views_field_settings' => $field_settings,
+        'field_instance_settings' => $field_config_settings,
+      ];
+      $theme_variables = [
+        'data' => $data[$field],
+        'options' => $options,
+      ];
+      $variables['summarized'][$field] = $theme_function($theme_variables);
     }
   }
-  sleep(1);
 }
 
 /**
@@ -163,115 +197,136 @@ function template_preprocess_views_summarize_style_plugin_summarized_table(&$var
 }
 
 /**
- * Creates the mark up for a no summary column.
+ * Creates the markup for a no summary column.
  */
-function views_summarize_type_none($data) {
+function views_summarize_type_none($variables) {
   return ['#markup' => ''];
 }
 
 /**
- * Creates the mark up for the total number of non-empty values in this column.
+ * Creates the markup for the total number of non-empty values in this column.
  */
-function views_summarize_type_count($data) {
-  $count = 0;
+function views_summarize_type_count($variables) {
+  $data = $variables['data'];
 
   if (!empty($data) && is_array($data)) {
-    $count = count(array_filter($data));
+    foreach ($data as $val) {
+      $data2[] = strip_tags($val);
+    }
   }
 
-  $text = t('Count:');
-  return ['#markup' => '<div class="label">' . $text . '</div> ' . $count];
+  $label = t('Count:');
+  $count = count(array_filter($data2, '_views_summarize_type_count_filter'));
+  return ['#markup' => '<div class="label">' . $label . '</div> ' . $count];
 }
 
 /**
- * Creates the mark up for the total value for a numeric column.
+ * Checks whether the given value is set (i.e., not null) or not.
+ *
+ * @param int $value
+ *   The value to check.
  */
-function views_summarize_type_total($data) {
+function _views_summarize_type_count_filter($value) {
+  return isset($value);
+}
+
+/**
+ * Creates the markup for the total value for a numeric column.
+ */
+function views_summarize_type_total($variables) {
+  $data = $variables['data'];
+  $options = $variables['options'];
   $total = 0;
 
   if (!empty($data) && is_array($data)) {
     foreach ($data as $val) {
-      // This allows for negative values and values w/commas to be added
-      // correctly.
-      $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
+      $total += floatval(_views_summarize_get_cleaned_value($val, $options));
     }
   }
 
-  $text = t('Total:');
-  return ['#markup' => '<div class="label">' . $text . '</div> ' . $total];
+  $label = t('Total:');
+  $summary = _views_summarize_get_formatted_summary($total, $options);
+  return ['#markup' => '<div class="label">' . $label . '</div> ' . $summary];
 }
 
 /**
- * Creates the mark up for the total value for a currency amount.
+ * Creates the markup for the total value for a currency amount.
  */
-function views_summarize_type_currency($data) {
+function views_summarize_type_currency($variables) {
+  $data = $variables['data'];
+  $options = $variables['options'];
   $total = 0;
 
   if (!empty($data) && is_array($data)) {
     foreach ($data as $val) {
-      // This allows for negative values and values w/commas to be added
-      // correctly.
-      $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
+      $total += floatval(_views_summarize_get_cleaned_value($val, $options));
     }
-    $total = number_format($total, 2);
   }
 
-  $text = t('Total:');
-  return ['#markup' => '<div class="label">' . $text . '</div> $' . $total];
+  $label = t('Total:');
+  $result = _views_summarize_get_formatted_summary($total, $options);
+  $prefix_suffix = _views_summarize_get_prefix_suffix($variables['options']);
+  $summary = $prefix_suffix['prefix'] . $result . $prefix_suffix['suffix'];
+  return ['#markup' => '<div class="label">' . $label . '</div>' . $summary];
 }
 
 /**
- * Creates the mark up for the total value for an average column.
+ * Creates the markup for the total value for an average column.
  *
  * The average calculation includes empty data values.
  */
-function views_summarize_type_average($data) {
+function views_summarize_type_average($variables) {
+  $data = $variables['data'];
+  $options = $variables['options'];
   $total = 0;
 
   if (!empty($data) && is_array($data)) {
     foreach ($data as $val) {
-      $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
+      $total += floatval(_views_summarize_get_cleaned_value($val, $options));
     }
-    $total = sprintf("%.2f", $total / count($data));
   }
 
-  $text = t('Average (including empty values):');
-  return ['#markup' => '<div class="label">' . $text . '</div> ' . $total];
+  $label = t('Average (including empty values):');
+  $summary = _views_summarize_get_formatted_summary($total / count($data), $options);
+  return ['#markup' => '<div class="label">' . $label . '</div> ' . $summary];
 }
 
 /**
- * Creates the mark up for the total value for an average column.
+ * Creates the markup for the total value for an average column.
  *
  * The average calculation excludes empty data values.
  */
-function views_summarize_type_average_no_empties($data) {
+function views_summarize_type_average_no_empties($variables) {
+  $data = $variables['data'];
+  $options = $variables['options'];
   $total = 0;
   $count = 0;
 
   if (!empty($data) && is_array($data)) {
     foreach ($data as $val) {
       if (isset($val) && $val != '') {
-        $total += (float) preg_replace('/[^0-9\,\.\-]/', '', $val);
+        $total += floatval(_views_summarize_get_cleaned_value($val, $options));
         $count++;
       }
     }
   }
 
   if ($total != 0 && $count != 0) {
-    $average = sprintf("%.2f", $total / $count);
+    $summary = _views_summarize_get_formatted_summary($total / $count, $options);
   }
   else {
-    $average = sprintf("%.2f", '0');
+    $summary = sprintf("%.2f", '0');
   }
 
-  $text = t('Average (excluding empty values):');
-  return ['#markup' => '<div class="label">' . $text . '</div> ' . $average];
+  $label = t('Average (excluding empty values):');
+  return ['#markup' => '<div class="label">' . $label . '</div> ' . $summary];
 }
 
 /**
- * Creates the mark up for the maximum and minimum values in this column.
+ * Creates the markup for the maximum and minimum values in this column.
  */
-function views_summarize_type_range($data) {
+function views_summarize_type_range($variables) {
+  $data = $variables['data'];
   $header = [
     [
       'data' => t('Range'),
@@ -283,10 +338,12 @@ function views_summarize_type_range($data) {
   if (!empty($data) && is_array($data)) {
     $rows = [
       [
-        t('Min'), min($data),
+        t('Min'),
+        strip_tags(min($data)),
       ],
       [
-        t('Max'), max($data),
+        t('Max'),
+        strip_tags(max($data)),
       ],
     ];
   }
@@ -301,9 +358,10 @@ function views_summarize_type_range($data) {
 }
 
 /**
- * Creates the mark up for a spread table in this column.
+ * Creates the markup for a spread table in this column.
  */
-function views_summarize_type_spread($data) {
+function views_summarize_type_spread($variables) {
+  $data = $variables['data'];
   $hist = [];
   $header = [
     [
@@ -323,10 +381,11 @@ function views_summarize_type_spread($data) {
 
     foreach ($hist as $value => $count) {
       if (empty($value)) {
-        $empty_string = t('(empty)');
+        $empty_string = t('(empty)')->__toString();
         $rows[$empty_string] = [$empty_string, $count];
       }
       else {
+        $value = strip_tags($value);
         $rows[$value] = [$value, $count];
       }
     }
@@ -341,4 +400,96 @@ function views_summarize_type_spread($data) {
   ];
 
   return $table;
+}
+
+/**
+ * Gets the record's value after stripping invalid characters.
+ *
+ * @param type $value
+ *   The value from which to strip invalid characters.
+ * @param type $options
+ *   The options element of the variables array that is passed into the summary
+ *   theme function.
+ *
+ * @return array
+ *  The value with invalid characters removed.
+ */
+function _views_summarize_get_cleaned_value($value, $options) {
+  $value = preg_replace('/[^0-9\.\,\-]/', '', strip_tags($value));
+
+  if (!empty($options['views_field_settings']['thousand_separator'])) {
+    $value = str_replace($options['views_field_settings']['thousand_separator'], '', $value);
+  }
+  if (!empty($options['views_field_settings']['decimal_separator'])) {
+    $value = str_replace($options['views_field_settings']['decimal_separator'], '.', $value);
+  }
+
+  return $value;
+}
+
+/**
+ * Gets the summary's formatted result.
+ *
+ * @param type $total
+ *   The summary to format.
+ * @param type $options
+ *   The options element of the variables array that is passed into the summary
+ *   theme function.
+ *
+ * @return array
+ *   The format settings in an associative array.
+ */
+function _views_summarize_get_formatted_summary($total, $options) {
+  $format_settings = [
+    'scale' => 0,
+    'decimal_separator' => NULL,
+    'thousand_separator' => NULL,
+  ];
+
+  if (!empty($options['views_field_settings']['scale'])) {
+    $format_settings['scale'] = $options['views_field_settings']['scale'];
+  }
+  if (!empty($options['views_field_settings']['decimal_separator'])) {
+    $format_settings['decimal_separator'] = $options['views_field_settings']['decimal_separator'];
+  }
+  if (!empty($options['views_field_settings']['thousand_separator'])) {
+    $format_settings['thousand_separator'] = $options['views_field_settings']['thousand_separator'];
+  }
+
+  $summary = number_format(
+    $total,
+    $format_settings['scale'],
+    $format_settings['decimal_separator'],
+    $format_settings['thousand_separator']
+  );
+
+  return $summary;
+}
+
+/**
+ * Gets the prefix and suffix for a summary's output, if they exist.
+ *
+ * @param type $options
+ *   The options element of the variables array that is passed into the summary
+ *   theme function.
+ *
+ * @return array
+ *   The prefix and suffix in an associative array.
+ */
+function _views_summarize_get_prefix_suffix($options) {
+  $prefix_suffix = [
+    'prefix' => '',
+    'suffix' => '',
+  ];
+
+  if (!empty($options['views_field_settings']['prefix_suffix'])) {
+    if (!empty($options['field_instance_settings']['prefix'])) {
+      $prefix_suffix['prefix'] = $options['field_instance_settings']['prefix'];
+    }
+    if (!empty($options['field_instance_settings']['suffix'])) {
+      $prefix_suffix['suffix'] = $options['field_instance_settings']['suffix'];
+    }
+  }
+
+  return $prefix_suffix;
 }
