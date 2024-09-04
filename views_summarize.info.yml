@@ -1,8 +1,7 @@
 name: Views summarize
 type: module
 description: Provides a style plugin for Views, allowing table data to be summarized.
-core: 8.x
-core_version_requirement: ^8 || ^9
+core_version_requirement: ^8 || ^9 || ^10
 package: Views
 dependencies:
   - drupal:views
