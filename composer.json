@@ -2,7 +2,7 @@
 	"name": "bb/views-summarize",
 	"description": "Provides a style plugin for Views, allowing table data to be summarized",
 	"version": "1.1.0",
-	"type": "civicrm-ext",
+	"type": "drupal-module",
 	"homepage": "https://github.com/Bnei-Baruch/drupal-views-summarize",
 	"license": "AGPL-3.0",
 	"authors": [
